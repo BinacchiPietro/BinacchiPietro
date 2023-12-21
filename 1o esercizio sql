@@ -1,0 +1,126 @@
+
+CREATE TABLE Disco (
+  NroSerie INT PRIMARY KEY,
+  TitoloAlbum VARCHAR(255) NOT NULL,
+  Anno INT NOT NULL,
+  Prezzo DECIMAL(10, 2) NOT NULL
+);
+-- insert some values
+
+INSERT INTO Disco VALUES (1, 'Dark Side of the Moon', 29.99);
+INSERT INTO Disco VALUES (2, 'Thriller', 24.95);
+INSERT INTO Disco VALUES (3, 'Abbey Road', 19.99);
+INSERT INTO Disco VALUES (4, 'The Wall', 34.50);
+INSERT INTO Disco VALUES (5, 'Back in Black', 22.75);
+INSERT INTO Disco VALUES (106, 'Hotel California', 27.50);
+INSERT INTO Disco VALUES (107, 'Rumours', 18.75);
+INSERT INTO Disco VALUES (108, 'Led Zeppelin IV', 31.25);
+INSERT INTO Disco VALUES (109, 'A Night at the Opera', 26.00;
+INSERT INTO Disco VALUES (110, 'The White Album', 28.99);
+
+-- create a table Contiene 
+CREATE TABLE Contiente (
+    NroSerieDisco INT, PRIMARY KEY
+    CodiceReg VARCHAR(50), NOT NULL
+    NroProg INT, NOT NULL
+    FOREIGN KEY (NroSerieDisco) REFERENCES Disco(NroSerie)
+);
+INSERT INTO Contiene VALUES (201, 'ABC123', 1);
+INSERT INTO Contiene VALUES (202, 'XYZ789', 2);
+INSERT INTO Contiene VALUES (203, 'DEF456', 3);
+INSERT INTO Contiene VALUES (204, 'GHI789', 4);
+INSERT INTO Contiene VALUES (205, 'JKL012', 5);
+INSERT INTO Contiene VALUES (206, 'MNO345', 6);
+INSERT INTO Contiene VALUES (207, 'PQR678', 7);
+INSERT INTO Contiene VALUES (208, 'STU901', 8); 
+INSERT INTO Contiene VALUES (209, 'VWX234', 9);
+INSERT INTO Contiene VALUES (210, 'YZA567', 10);
+
+-- create a table Esecuzione
+CREATE TABLE Esecuzione (
+    CodiceReg VARCHAR(50), PRIMARY KEY
+    TitoloCanz VARCHAR(50), NOT NULL
+    Anno INT, 
+    FOREIGN KEY (CodiceReg) REFERENCES Contiene(CodiceReg)
+);
+INSERT INTO Esecuzione Values ('ABC123', 'Bohemian Rhapsody', 1975);
+INSERT INTO Esecuzione Values ('XYZ789', 'Like a Rolling Stone', 1965);
+INSERT INTO Esecuzione Values ('DEF456', 'Billie Jean', 1983);
+INSERT INTO Esecuzione Values ('GHI789', 'Hotel California');
+INSERT INTO Esecuzione Values ('JKL012', 'Imagine', 1971);
+INSERT INTO Esecuzione Values ('MNO345', 'Thriller', 1982);
+INSERT INTO Esecuzione Values ('PQR678', 'Stairway to Heaven', 1971);
+INSERT INTO Esecuzione Values ('STU901', 'Let It Be', 1970);
+INSERT INTO Esecuzione Values ('VWX234', 'Hey Jude', 1968);
+INSERT INTO Esecuzione Values ('YZA567', 'Purple Haze', 1967);
+
+-- create a table Autore
+CREATE TABLE Autore (
+    Nome VARCHAR(50), PRIMARY KEY
+    TitoloCanzone VARCHAR(50), NOT NULL 
+    FOREIGN KEY(TitoloCanzone) REFERENCES Esecuzione(TitoloCanz)
+);
+INSERT INTO Autore VALUES ('John Lennon', 'Imagine');
+INSERT INTO Autore VALUES ('Bob Dylan', 'Like a Rolling Stone'); 
+INSERT INTO Autore VALUES ('Freddie Mercury', 'Bohemian Rhapsody');
+INSERT INTO Autore VALUES ('Michael Jackson', 'Billie Jean');
+INSERT INTO Autore VALUES ('Drake', 'Hotel California');
+INSERT INTO Autore VALUES ('Stevie Nicks', 'Rhiannon');
+INSERT INTO Autore VALUES ('Jimmy Page', 'Stairway to Heaven');
+INSERT INTO Autore VALUES ('Paul McCartney', 'Let It Be');
+INSERT INTO Autore VALUES ('John Fogerty', 'Fortunate Son');
+INSERT INTO Autore VALUES ('Jimi Hendrix', 'Purple Haze');
+
+-- create a table Cantante
+CREATE TABLE Cantante (
+    NomeCantante VARCHAR(50), PRIMARY KEY
+    CodiceReg VARCHAR(50), NOT NULL
+    FOREIGN KEY(NomeCantante) REFERENCES Autore(Nome)
+);
+INSERT INTO Autore VALUES ('Adele', 'ABC123');
+INSERT INTO Autore VALUES ('Ed Sheeran', 'XYZ789');
+INSERT INTO Autore VALUES ('Beyoncé', 'DEF456');
+INSERT INTO Autore VALUES ('Justin Bieber', 'GHI789');
+INSERT INTO Autore VALUES ('Taylor Swift', 'JKL012');
+INSERT INTO Autore VALUES ('Drake', 'MNO345');
+INSERT INTO Autore VALUES ('Ariana Grande', 'PQR678');
+INSERT INTO Autore VALUES ('The Weeknd', 'STU901');
+INSERT INTO Autore VALUES ('Rihanna', 'VWX234');
+INSERT INTO Autore VALUES ('Jimi Hendrix', 'YZA567');
+
+--1) I cantautori (persome che hanno cantato e scritto la stessa canzone) il cui nome inizia per la "D".
+    SELECT DISTINCT c.NomeCantante FROM Cantante c JOIN Autore a ON c.NomeCantante = a.Nome WHERE c.NomeCantante LIKE "D%"
+--2) I titoli dei dischi che contengono canzoni di cui non si conosce l'anno di registrazione
+    SELECT DISTINCT TitoloAlbum FROM Disco JOIN Canzoni ON TitoloAlbum = TitoloCanzone WHERE Anno IS NULL
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
