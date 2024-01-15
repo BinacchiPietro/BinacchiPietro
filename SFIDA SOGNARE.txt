@@ -1,0 +1,314 @@
+1. Quali prodotti vendono meglio in determinati periodi dell’anno?
+WITH ProdottiOrdinatiPerMese AS (
+    SELECT
+        YEAR(t.DataTransazione) AS Anno,
+        MONTH(t.DataTransazione) AS Mese,
+        p.ProdottoID,
+        p.NomeProdotto,
+        SUM(t.QuantitaAcquistata) AS QuantitaTotaleAcquistata,
+        ROW_NUMBER() OVER (PARTITION BY YEAR(t.DataTransazione), MONTH(t.DataTransazione) ORDER BY SUM(t.QuantitaAcquistata) DESC) AS Rn
+    FROM
+        `2.0schema`.transazioni t
+    JOIN
+        `2.0schema`.prodotti p ON t.ProdottoID = p.ProdottoID
+    GROUP BY
+        Anno, Mese, p.ProdottoID, p.NomeProdotto
+)
+SELECT
+    Anno,
+    Mese,
+    ProdottoID,
+    NomeProdotto,
+    QuantitaTotaleAcquistata
+FROM
+    ProdottiOrdinatiPerMese
+WHERE
+    Rn = 1;
+
+
+2. Selezione i primi 3 clienti che hanno il prezzo medio di acquisto più alto in ogni categoria di prodotto.
+WITH ClientiPerCategoria AS (
+    SELECT
+        t.ClienteID,
+        p.Categoria,
+        AVG(t.ImportoTransazione) AS PrezzoMedioAcquisto,
+        ROW_NUMBER() OVER (PARTITION BY p.Categoria ORDER BY AVG(t.ImportoTransazione) DESC) AS Rn
+    FROM
+        `2.0schema`.transazioni t
+    JOIN
+        `2.0schema`.prodotti p ON t.ProdottoID = p.ProdottoID
+    GROUP BY
+        t.ClienteID, p.Categoria
+)
+SELECT
+    ClienteID,
+    Categoria,
+    PrezzoMedioAcquisto
+FROM
+    ClientiPerCategoria
+WHERE
+    Rn <= 3;
+
+
+3. Numero di prodotti con una quantità disponibile inferiore alla media.
+SELECT
+    COUNT(*) AS NumeroProdotti
+FROM
+    `2.0schema`.prodotti
+WHERE
+    QuantitaDisponibile < (SELECT AVG(QuantitaDisponibile) FROM `2.0schema`.prodotti);
+
+
+4. Media delle recensioni dei clienti il cui tempo di elaborazione dell'ordine è inferiore a 30gg 
+SELECT
+    c.ClienteID,
+    c.NomeCliente,
+    t.TransazioneID,
+    t.DataSpedizione,
+    DATEDIFF(t.DataSpedizione, t.DataTransazione) < 30 AS Data_Elaborazione,
+    AVG(r.Rating) AS RecensioneMedia
+FROM
+    `2.0schema`.transazioni t
+JOIN
+    `2.0schema`.clienti c ON t.ClienteID = c.ClienteID
+JOIN
+    `2.0schema`.ratings r ON t.ClienteID = r.CustomerID
+WHERE
+    t.StatusConsegna = 'in consegna' AND DATEDIFF(t.DataSpedizione, t.DataTransazione) < 30
+GROUP BY
+    c.ClienteID, c.NomeCliente, t.TransazioneID, t.DataSpedizione;
+
+
+
+5. Valutazione del tempo in anni in cui viene gestita una spedizione con visualizzazione di "Più di un anno" o "Meno di un anno" in una colonna calcolata.
+RISPOSTA:
+SELECT
+    SpedizioneID,
+    MetodoSpedizione,
+    DataSpedizione,
+    StatusConsegna,
+    DATEDIFF(CURDATE(), DataSpedizione) AS GiorniTrascorsi,
+    CASE
+        WHEN DATEDIFF(CURDATE(), DataSpedizione) > 365 THEN 'Più di un anno'
+        ELSE 'Meno di un anno'
+    END AS ValutazioneTempo
+FROM
+    Spedizioni;
+
+
+6. Totale delle disponibilità in magazzino dei prodotti divisi per categoria
+RISPOSTA:
+SELECT
+    Categoria,
+    SUM(QuantitaDisponibile) AS TotaleDisponibilita
+FROM
+    Prodotto
+GROUP BY
+    Categoria;
+
+7. Si vuole stampare Nome del cliente, Importo transazione (prezzo * quantità),Nome Prodotto e Rating MEDIO del prodotto. Aggiungere colonna OUTPUT che avrà i seguenti valori:
+SE la transazione supera il valore medio di tutte le transazioni dell’anno stampare “Sopra La Media” altrimenti “Sotto la media”
+RISPOSTA:
+WITH MediaTransazioni AS (
+    SELECT
+        YEAR(DataTransazione) AS Anno,
+        AVG(ImportoTransazione) AS MediaTransazioni
+    FROM
+        transazioni
+    GROUP BY
+        YEAR(DataTransazione)
+)
+SELECT
+    c.NomeCliente,
+    t.ImportoTransazione,
+    p.NomeProdotto,
+    AVG(r.Rating) AS RatingMedio,
+    CASE WHEN t.ImportoTransazione > mt.MediaTransazioni THEN 'Sopra la Media' ELSE 'Sotto la Media' END AS OUTPUT
+FROM
+    transazioni t
+JOIN
+    clienti c ON t.ClienteID = c.ClienteID
+JOIN
+    prodotti p ON t.ProdottoID = p.ProdottoID
+LEFT JOIN
+    ratings_dataset r ON t.ProdottoID = r.ProductID
+LEFT JOIN
+    MediaTransazioni mt ON YEAR(t.DataTransazione) = mt.Anno
+GROUP BY
+    c.NomeCliente, t.ImportoTransazione, p.NomeProdotto, mt.MediaTransazioni
+ORDER BY
+    c.NomeCliente, t.ImportoTransazione;
+
+
+
+
+8. Trovare tutti i clienti che si sono registrati nel mese con più profitto
+RISPOSTA:
+-- Calcola il profitto totale per ogni mese
+WITH ProfittoPerMese AS (
+    SELECT
+        DATE_FORMAT(t.DataTransazione, '%Y-%m') AS Mese,
+        SUM(t.QuantitaAcquistata * p.Prezzo) AS ProfittoTotale
+    FROM
+        transazioni t
+    JOIN
+        prodotti p ON t.ProdottoID = p.ProdottoID
+    GROUP BY
+        DATE_FORMAT(t.DataTransazione, '%Y-%m')
+)
+
+-- Identifica il mese con il massimo profitto
+, MeseConMassimoProfitto AS (
+    SELECT
+        Mese
+    FROM
+        ProfittoPerMese
+    ORDER BY
+        ProfittoTotale DESC
+    LIMIT 1
+)
+
+-- Ottieni tutti i clienti che si sono registrati in quel mese
+SELECT
+    c.*
+FROM
+    clienti c
+JOIN
+    MeseConMassimoProfitto m ON MONTH(c.DataRegistrazione) = MONTH(m.Mese)
+ORDER BY
+    c.DataRegistrazione;
+
+
+11. Considerando i prodotti della Categoria Abbigliamento nel periodo Primavera-Estate e Autunno-Inverno, trova la quantità totale di prodotti acquistati e totale speso, arrotondando laddove necessario (Suggerimento/N.B: il totale speso, non il totale transazione) 
+SELECT
+    'Primavera-Estate' AS Periodo,
+    'Abbigliamento' AS Categoria,
+    SUM(t.QuantitaAcquistata) AS QuantitaTotale,
+    ROUND(SUM(t.QuantitaAcquistata * p.Prezzo), 2) AS TotaleSpeso
+FROM
+    `2.0schema`.transazioni t
+JOIN
+    `2.0schema`.prodotti p ON t.ProdottoID = p.ProdottoID
+WHERE
+    p.Categoria = 'Abbigliamento' 
+    AND MONTH(t.DataTransazione) IN (3, 4, 5, 6, 7, 8)
+
+UNION
+
+SELECT
+    'Autunno-Inverno' AS Periodo,
+    'Abbigliamento' AS Categoria,
+    SUM(t.QuantitaAcquistata) AS QuantitaTotale,
+    ROUND(SUM(t.QuantitaAcquistata * p.Prezzo), 2) AS TotaleSpeso
+FROM
+    `2.0schema`.transazioni t
+JOIN
+    `2.0schema`.prodotti p ON t.ProdottoID = p.ProdottoID
+WHERE
+    p.Categoria = 'Abbigliamento' 
+    AND MONTH(t.DataTransazione) IN (9, 10, 11, 12, 1, 2);
+
+
+ 
+12. Trova il nome del prodotto, la data di transazione e la data di spedizione degli ultimi dieci prodotti acquistati. Elenca anche quanti giorni siano trascorsi dalla data di transazione a quella di spedizione
+RISPOSTA:
+SELECT
+    p.NomeProdotto,
+    t.DataTransazione,
+    t.DataSpedizione,
+    DATEDIFF(t.DataSpedizione, t.DataTransazione) AS GiorniTrascorsi
+FROM
+    Transazioni t
+JOIN
+    Prodotti p ON t.ProdottoID = p.ProdottoID
+ORDER BY
+    t.DataTransazione DESC
+LIMIT 10;
+
+
+13. Identifica i prodotti che hanno venduto più di nove unità, e calcola la media delle recensioni per ciascun prodotto, ordinando il risultato in modo decrescente in base al numero di unità vendute e alla media delle recensioni. 
+RISPOSTA:
+SELECT
+      ProdottoID,
+      QuantitaAcquistata,
+      AVG(Rating) AS MediaRecensioni
+FROM transazioni 
+JOIN ratings_dataset ON ClienteID = CustomerID
+WHERE QuantitaAcquistata > 9
+GROUP BY ProdottoID, QuantitaAcquistata
+ORDER BY QuantitaAcquistata, MediaRecensioni DESC;
+
+14. Mostra come sono distribuite le transazioni sui giorni della settimana. Mostra sia il numero di transazioni per ogni giorno della settimana, che la percentuale divisa per giorno della settimana
+SELECT
+    DAYNAME(DataTransazione) AS GiornoSettimana,
+    COUNT(*) AS NumeroTransazioni,
+    CONCAT(ROUND((COUNT(*) / (SELECT COUNT(*) FROM transazioni)) * 100, 2), '%') AS Percentuale
+FROM
+    transazioni
+GROUP BY
+    GiornoSettimana
+ORDER BY
+    FIELD(GiornoSettimana, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+
+
+15. Trova tutti i clienti che hanno effettuato transazioni con importo totale superiore a una certa soglia e che hanno speso in almeno due categorie di prodotti diverse.
+SELECT distinct
+      c.ClienteID,
+      c.NomeCliente
+FROM clienti c
+JOIN transazioni t ON c.ClienteID = t.ClienteID
+JOIN prodotti p ON t.ProdottoID = p.ProdottoID
+WHERE t.ImportoTransazione > 40
+GROUP BY c.ClienteID, c.NomeCliente
+HAVING count(distinct p.Categoria) >= 2;
+
+
+16. Trova i prodotti con la quantità disponibile più bassa e il relativo cliente che li ha acquistati.
+RISPOSTA: 
+SELECT 
+    p.ProdottoID,
+    p.NomeProdotto,
+    p.QuantitaDisponibile,
+    t.ClienteID,
+    t.QuantitaAcquistata
+FROM prodotti p
+JOIN transazioni t ON p.ProdottoID = t.ProdottoID
+WHERE p.QuantitaDisponibile = (
+    SELECT MIN(QuantitaDisponibile) FROM prodotti
+) 
+ORDER BY p.ProdottoID;
+
+
+
+
+
+17. Identifica i tre prodotti più venduti e la loro quantità venduta. Trova la spesa totale (Prezzo*QuantitaAcquistata) per ogni prodotto e identifica la sua categoria
+RISPOSTA:
+SELECT 
+    t.ProdottoID,
+    p.NomeProdotto,
+    p.Categoria,
+    SUM(t.QuantitaAcquistata) AS QuantitaVenduta,
+    ROUND(SUM(t.ImportoTransazione), 2) AS SpesaTotale
+FROM transazioni t
+JOIN prodotti p ON t.ProdottoID = p.ProdottoID
+GROUP BY t.ProdottoID, p.NomeProdotto, p.Categoria
+ORDER BY QuantitaVenduta DESC
+LIMIT 3;
+
+
+
+18. Trova la quantità totale e il prezzo medio di prodotti (arrotonda a tre cifre decimali) disponibili in magazzino per ogni prodotto. Identifica la sua categoria.
+RISPOSTA:
+SELECT 
+    p.ProdottoID,
+    p.NomeProdotto,
+    p.Categoria,
+    SUM(p.QuantitaDisponibile) AS QuantitaTotale,
+    ROUND(AVG(p.Prezzo), 3) AS PrezzoMedio
+FROM prodotti p
+GROUP BY p.ProdottoID, p.NomeProdotto, p.Categoria
+ORDER BY p.ProdottoID;
+
+
+
