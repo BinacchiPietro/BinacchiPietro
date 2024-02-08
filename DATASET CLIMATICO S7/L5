@@ -1,0 +1,29 @@
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt
+
+dataset = pd.read_csv("./OneDrive/Desktop/DATA ANALYST/dataset_climatico.csv")
+
+df = pd.DataFrame(dataset)
+df_cleaned = df.dropna()
+
+colonne_da_normalizzare = ["temperatura_media", "precipitazioni", "umidita", "velocita_vento"]
+media = df[colonne_da_normalizzare].mean()
+deviazione = df[colonne_da_normalizzare].std()
+df[colonne_da_normalizzare] = (df[colonne_da_normalizzare] - media) / deviazione
+
+definizione = df.describe()
+
+df[colonne_da_normalizzare].plot(kind='box', figsize=(12, 8))
+plt.title('box plots variabili normalizzate')
+plt.show()
+
+import seaborn as sns
+
+df_no_data = df.drop(["data_osservazione", "stazione_meteorologica"], axis=1)
+correlazioni = df_no_data.corr()
+
+sns.heatmap(correlazioni, annot=True, linewidths=5)
+plt.title("correlazione tra variabili meteorologiche")
+plt.show()
+
